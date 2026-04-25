@@ -11,11 +11,11 @@ from langchain_community.vectorstores import Chroma
 load_dotenv(override=True)
 embedding_model = GoogleGenerativeAIEmbeddings ( model="models/gemini-embedding-001", google_api_key=os.getenv('GOOGLE_API_KEY'))
 
-# Initialiser le LLM Gemini
+# init llm gemini
 llm = ChatGoogleGenerativeAI(
     model="gemini-2.5-flash",
     google_api_key=os.getenv('GOOGLE_API_KEY'),
-    temperature=0  # Reponses factuelles et reproductibles
+    temperature=0
 )
 
 def load_cv(path):
@@ -28,7 +28,7 @@ def load_cv(path):
 def clean_text(text):
     """Nettoyer le texte : espaces, sauts de ligne, caractères parasites."""
     if not isinstance(text, str):
-        text = str(text) # Sécurité supplémentaire au cas où
+        text = str(text)
         
     text = re.sub(r'\n+', '\n', text)
     text = re.sub(r'\s{2,}', ' ', text)
@@ -40,20 +40,20 @@ def chunk_document(text, chunk_size,overlap):
         chunk_size=chunk_size,
         chunk_overlap=overlap
     )
-    chunks = text_splitter.create_documents([text]) # create_documents transforme un texte brut en liste de 'Documents' LangChain
+    chunks = text_splitter.create_documents([text]) # text => chunks
     return chunks
 
 
-def build_embeddings(chunks, model):
+def build_embeddings(chunks, model):  # j'ai commente cette fonction et retourner juste le model puisque chromaDB peut stocker et creer les embeddings en meme temps (mentionne dans la ligne 56)
     # embedding_model = GoogleGenerativeAIEmbeddings ( model=model, google_api_key=os.getenv('GOOGLE_API_KEY'))  ==>  initialisation du modele d'embeddings
-    # output_vector = embedding_model.embed_query(chunks)
+    # output_vector = embedding_model.embed_query(chunks) 
     return model
 
 
-def create_vector_store(chunks, embeddings):     # Stocker les vecteurs dans une base vectorielle ChromaDB
+def create_vector_store(chunks, embeddings):     # stocker les vecteurs dans une base vectorielle ChromaDB
     persist_dir = "./chroma_cv_store"
 
-    vectorstore = Chroma.from_documents(     # ChromaDB calcule automatiquement l'embedding de chaque chunk
+    vectorstore = Chroma.from_documents(     # chromaDB calcule automatiquement l'embedding de chaque chunk
         documents=chunks,
         embedding=embeddings,
         collection_name="cv_active",
@@ -62,7 +62,7 @@ def create_vector_store(chunks, embeddings):     # Stocker les vecteurs dans une
     return vectorstore
 
 def retrieve_relevant_chunks(question,store, k):
-    retriever = store.as_retriever(     # creer le retriever de ChromaDB qui va faire la recherche de similarite
+    retriever = store.as_retriever(     # creer le retriever de ChromaDB qui va faire la recherche de similarite (cos similarity)
         search_type='similarity',
         search_kwargs={'k': k}
     )
@@ -108,7 +108,7 @@ def answer_cv_only(question, store):
 
 
 def reload_vector_store(file): 
-    """Gère le rechargement total lorsqu'un nouveau CV est uploadé."""
+    """Gere le rechargement total lorsqu'un nouveau CV est uploade."""
     file_path = "./" + file.name                                
     with open(file_path, "wb") as f:                            
         f.write(file.getbuffer())
@@ -117,12 +117,10 @@ def reload_vector_store(file):
         raw_text = load_cv(file_path)                               
         cleaned_text = clean_text(raw_text)
         chunks = chunk_document(cleaned_text, chunk_size=300, overlap=20)
-        # CORRECTION : Passer l'instance globale 'embedding_model'
         embeddings = build_embeddings(chunks, model=embedding_model)
         store = create_vector_store(chunks, embeddings)
         return store
     finally:
-        # Sécurité : Supprimer le fichier physique même si une erreur survient
         if os.path.exists(file_path):
             os.remove(file_path) 
 
@@ -134,7 +132,6 @@ def run_streamlit_app():
     st.title("Chatbot CV Interactif (RAG)")
     st.markdown("Posez vos questions, l'IA vous répondra **uniquement** avec les informations de mon CV.")
 
-    # Variables d'état (Session State)
     if "store" not in st.session_state:
         st.session_state.store = None
     if "current_cv" not in st.session_state:
@@ -142,7 +139,6 @@ def run_streamlit_app():
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
-    # Sidebar pour l'upload du CV
     with st.sidebar:
         st.header("Gestion du CV")
         uploaded_file = st.file_uploader("Chargez votre CV", type=['pdf'])
@@ -160,28 +156,23 @@ def run_streamlit_app():
         else:
             st.warning("Veuillez charger un fichier pour démarrer.")
 
-    # Zone de discussion principale
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    # Zone de saisie
     if prompt := st.chat_input("Ex: Quelles sont les compétences en Python ?"):
         if st.session_state.store is None:
             st.error("Veuillez d'abord charger un CV dans le menu de gauche.")
         else:
-            # Afficher la question de l'utilisateur
             st.session_state.messages.append({"role": "user", "content": prompt})
             with st.chat_message("user"):
                 st.markdown(prompt)
 
-            # Générer et afficher la réponse de l'assistant
             with st.chat_message("assistant"):
                 with st.spinner("Recherche dans le CV..."):
                     reponse = answer_cv_only(prompt, st.session_state.store)
                     st.markdown(reponse)
             
-            # Sauvegarder la réponse dans l'historique
             st.session_state.messages.append({"role": "assistant", "content": reponse})
 
 if __name__ == "__main__":
