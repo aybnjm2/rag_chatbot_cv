@@ -1,6 +1,6 @@
 # 📄 Chatbot CV Interactif (RAG)
 
-A sophisticated Retrieval-Augmented Generation (RAG) chatbot built with LangChain and Google Gemini that answers recruiter questions based exclusively on CV content. The system ensures accurate, contextual responses by retrieving relevant information from uploaded PDFs and generating answers only from that context.
+A Retrieval-Augmented Generation (RAG) chatbot built with LangChain and Google Gemini that answers recruiter questions based exclusively on CV content. The system ensures accurate, contextual responses by retrieving relevant information from uploaded PDFs and generating answers only from that context.
 
 ## 🎯 Features
 
