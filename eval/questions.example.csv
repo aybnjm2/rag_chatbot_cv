@@ -1,0 +1,2 @@
+cv_file,question,answerable,expected_keywords
+CV.pdf,Quels langages de programmation maîtrise le candidat ?,oui,Python|SQL
