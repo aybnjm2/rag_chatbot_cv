@@ -11,11 +11,11 @@ from langchain_community.vectorstores import Chroma
 
 load_dotenv()
 
-# --- Paramètres (à ajuster avec ton jeu de test) ---
-CHUNK_SIZE = 1000      # en caractères
+# params a ajuster
+CHUNK_SIZE = 1000      # en char
 CHUNK_OVERLAP = 150
 TOP_K = 4
-MIN_SCORE = 0.35       # point de départ, à calibrer
+MIN_SCORE = 0.35       # entry point a calibrer
 
 FALLBACK_ANSWER = (
     "Je ne peux pas répondre à cette question car "
@@ -23,7 +23,7 @@ FALLBACK_ANSWER = (
 )
 
 
-# --- Configuration et modèles ---
+# config et modeles 
 def get_api_key():
     key = os.getenv("GOOGLE_API_KEY")
     if not key:
@@ -48,12 +48,12 @@ def get_llm():
     )
 
 
-# --- Chargement et nettoyage ---
+# Chargement et nettoyage 
 def clean_text(text):
     if not isinstance(text, str):
         text = str(text)
     text = text.replace("\r\n", "\n").replace("\r", "\n")
-    text = re.sub(r"[ \t]+", " ", text)      # espaces/tabs, sans toucher aux \n
+    text = re.sub(r"[ \t]+", " ", text)      # espaces/tabs sans toucher aux \n
     text = re.sub(r"\n{3,}", "\n\n", text)   # trop de lignes vides
     return text.strip()
 
@@ -76,7 +76,7 @@ def chunk_document(pages, chunk_size=CHUNK_SIZE, overlap=CHUNK_OVERLAP):
     return splitter.split_documents(pages)
 
 
-# --- Base vectorielle ---
+# vector db chromadb
 def create_vector_store(chunks, collection_name):
     return Chroma.from_documents(
         documents=chunks,
@@ -109,13 +109,13 @@ def build_store_from_pdf(file_bytes, collection_name,
             os.remove(file_path)
 
 
-# --- Recherche ---
+# search
 def retrieve_relevant_chunks(question, store, k=TOP_K, min_score=MIN_SCORE):
     results = store.similarity_search_with_relevance_scores(question, k=k)
     return [doc for doc, score in results if score >= min_score]
 
 
-# --- Prompt et génération ---
+# prompt et generation
 def build_prompt(question, context):
     return f"""Tu es l'assistant virtuel personnel de l'étudiant à qui appartient ce CV.
 Réponds à la question du recruteur EN TE BASANT UNIQUEMENT sur les extraits de CV fournis.
