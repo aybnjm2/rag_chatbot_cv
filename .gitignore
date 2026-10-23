@@ -9,3 +9,10 @@ wheels/
 # Virtual environments
 .venv
 .env
+chroma_cv_store/
+
+# dossier ou se trouve les fichiers CV
+eval/cvs/    
+
+# dossier ou se trouve resultats de eval
+eval/results.csv
